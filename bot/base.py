@@ -43,7 +43,7 @@ async def choose_winner(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ) -> int:
-    if update.message.from_user.id != settings.MODERATOR_ID:
+    if int(update.message.from_user.id) != int(settings.MODERATOR_ID):
         return
 
     client = MongoClient(settings.MONGODB_CLIENT_URL)
