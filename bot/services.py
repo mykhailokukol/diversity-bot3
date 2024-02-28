@@ -38,7 +38,9 @@ def get_participants_number(client: MongoClient) -> int:
     return count + 1
 
 
-def add_user_to_db(client: MongoClient, update: Update, win_number: int) -> None:
+def add_user_to_db(
+    client: MongoClient, update: Update, win_number: int, resort: str
+) -> None:
     db = client["ski-bot"]
     participants = db["participants"]
 
@@ -46,14 +48,16 @@ def add_user_to_db(client: MongoClient, update: Update, win_number: int) -> None
         {
             "user_id": update.message.from_user.id,
             "win_number": win_number,
+            "resort": resort,
         }
     )
-    return True
 
 
-def already_participant(client: MongoClient, update: Update):
+def already_participant(client: MongoClient, update: Update, resort: str) -> bool:
     db = client["ski-bot"]
     participants = db["participants"]
-    if participants.find_one({"user_id": update.message.from_user.id}):
+    if participants.find_one(
+        {"user_id": update.message.from_user.id, "resort": resort}
+    ):
         return True
     return False

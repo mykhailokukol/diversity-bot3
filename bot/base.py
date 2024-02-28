@@ -16,42 +16,86 @@ from bot.services import (
 )
 from bot.config import settings
 
-WINNER = 0
+WINNER_RESORT, WINNER, RESORT = range(3)
 
 
 async def start(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-) -> None:
-    client = MongoClient(settings.MONGODB_CLIENT_URL)
+) -> int:
+    keyboard = [
+        [
+            InlineKeyboardButton("Бобровый лог"),
+            InlineKeyboardButton("Солнечная Долина"),
+        ]
+    ]
+    markup = ReplyKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "Выберите курорт:",
+        reply_markup=markup,
+    )
 
-    if already_participant(client, update):
+    return RESORT
+
+
+async def choose_resort(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> ConversationHandler.END:
+    client = MongoClient(settings.MONGODB_CLIENT_URL)
+    resort = update.message.text
+
+    if already_participant(client, update, resort):
         await update.message.reply_text("Вы уже участвуете в розыгрыше.")
         return
 
     X = get_participants_number(client)
     S = await get_exchange_rate()
     N = (X + 100) * S
-    add_user_to_db(client, update, N)
+    add_user_to_db(client, update, N, resort)
 
+    markup = ReplyKeyboardRemove()
     await update.message.reply_text(
-        f"Отлично!\nВы участвуете в розыгрыше приза!\nВаш номер в розыгрыше: {N}"
+        f"Отлично!\nВы участвуете в розыгрыше приза!\nВаш номер в розыгрыше: {N}",
+        reply_markup=markup,
     )
+    return ConversationHandler.END
 
 
-async def choose_winner(
+async def choose_winner_resort(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ) -> int:
     if int(update.message.from_user.id) != int(settings.MODERATOR_ID):
         return
 
+    keyboard = [
+        [
+            InlineKeyboardButton("Бобровый лог"),
+            InlineKeyboardButton("Солнечная Долина"),
+        ]
+    ]
+    markup = ReplyKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "Выберите курорт:",
+        reply_markup=markup,
+    )
+
+    return WINNER_RESORT
+
+
+async def choose_winner(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> int:
+    resort = update.message.text
+
     client = MongoClient(settings.MONGODB_CLIENT_URL)
     db = client["ski-bot"]
     participants = db["participants"]
     participants_keyboard = [[]]
 
-    for participant in participants.find({}):
+    for participant in participants.find({"resort": resort}):
         participants_keyboard[0].append(InlineKeyboardButton(participant["win_number"]))
     markup = ReplyKeyboardMarkup(participants_keyboard)
     await update.message.reply_text(
@@ -86,6 +130,7 @@ async def send_congratulations(
     await context.bot.send_message(
         chat_id=winner["user_id"],
         text="Поздавляем, Вы выиграли приз!\n"
+        f'Курорт: {winner["resort"]}'
         'Чтобы получить его, подтвердите это нажав на кнопку "Подтвердить".\n'
         'Или откажитесь нажав на "Отказаться"',
         reply_markup=markup,
@@ -114,6 +159,18 @@ async def callback(
             await context.bot.send_message(
                 chat_id=settings.MODERATOR_ID,
                 text=f"Пользователь с номером {win_number} подтвердил получение приза.",
+            )
+            await update.effective_chat.send_message(
+                "На месте вы сможете выбрать один из призов ниже 👇🏻"
+            )
+            await update.effective_chat.send_message(
+                "Брендированная шапка\n"
+                "Брендированный шарф\n"
+                "Брендированный плед\n"
+                "Брендированные перчатки\n"
+                "Брендированные термос\n"
+                "Брендированный пауэр банк\n"
+                "Брендированная куртка\n"
             )
         if "reject_" in query.data:
             win_number = query.data.split("_")[1]
