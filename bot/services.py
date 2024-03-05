@@ -1,4 +1,4 @@
-from random import randint
+import random
 
 from aiohttp import ClientSession
 from pymongo import MongoClient
@@ -28,7 +28,7 @@ async def get_exchange_rate():
                 return response
     except Exception as e:
         print(f"Error occured on getting exchange rates:\n{e}")
-        return randint(10, 99)
+        return random.randint(10, 99)
 
 
 def get_participants_number(client: MongoClient) -> int:
@@ -61,3 +61,15 @@ def already_participant(client: MongoClient, update: Update, resort: str) -> boo
     ):
         return True
     return False
+
+
+def get_random_prize(client: MongoClient, update: Update) -> str:
+    db = client["ski-bot"]
+    prizes = db["prizes"]
+    prizes_list = list(prizes.find({"amount": {"$gt": 0}}, {"_id": 0, "name": 1}))
+    if prizes_list:
+        random_prize = random.choice(prizes_list)
+        prizes.update_one({"name": random_prize["name"]}, {"$inc": {"amount": -1}})
+        return random_prize["name"]
+    else:
+        return "К сожалению, призов не осталось"

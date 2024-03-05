@@ -13,6 +13,7 @@ from bot.services import (
     get_participants_number,
     add_user_to_db,
     already_participant,
+    get_random_prize,
 )
 from bot.config import settings
 
@@ -96,7 +97,7 @@ async def choose_winner(
     participants_keyboard = [[]]
 
     for participant in participants.find({"resort": resort}):
-        participants_keyboard[0].append(InlineKeyboardButton(participant["win_number"]))
+        participants_keyboard.append([InlineKeyboardButton(participant["win_number"])])
     markup = ReplyKeyboardMarkup(participants_keyboard)
     await update.message.reply_text(
         "Выберите победителя или введите номер выиграшного билета вручную:",
@@ -109,7 +110,7 @@ async def choose_winner(
 async def send_congratulations(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-) -> ConversationHandler.END:
+) -> int:
     win_number = int(update.message.text)
     client = MongoClient(settings.MONGODB_CLIENT_URL)
     db = client["ski-bot"]
@@ -135,7 +136,7 @@ async def send_congratulations(
         'Или откажитесь нажав на "Отказаться"',
         reply_markup=markup,
     )
-    return ConversationHandler.END
+    return WINNER
 
 
 async def cancel(
@@ -143,6 +144,10 @@ async def cancel(
     context: ContextTypes.DEFAULT_TYPE,
 ) -> int:
     """No description needed"""
+    await update.message.reply_text(
+        "Прекращаем последнюю операцию.",
+        reply_markup=ReplyKeyboardRemove(),
+    )
     return ConversationHandler.END
 
 
@@ -156,21 +161,19 @@ async def callback(
     if answer:
         if "approve_" in query.data:
             win_number = query.data.split("_")[1]
+            client = MongoClient(settings.MONGODB_CLIENT_URL)
+
             await context.bot.send_message(
                 chat_id=settings.MODERATOR_ID,
                 text=f"Пользователь с номером {win_number} подтвердил получение приза.",
             )
+            prize = get_random_prize(client, update)
+            await query.edit_message_text(f"Поздравляем, Вы выиграли приз: {prize}")
             await update.effective_chat.send_message(
-                "На месте Вы сможете выбрать один из имеющихся в наличии на момент Вашего прихода призов (количество призов ограничено, актуально на 02.03.2024) ниже 👇🏻"
-            )
-            await update.effective_chat.send_message(
-                "Брендированная шапка\n"
-                "Брендированный шарф\n"
-                "Брендированный плед\n"
-                "Брендированные перчатки\n"
-                "Брендированные термос\n"
-                "Брендированный пауэр банк\n\n"
-                "Солнечная долина: Приз можно забрать с 17:00 до 18:00 02.03.2024"
+                "Бобровый Лог: Приз можно забрать с 16:00 до 17:00 в день розыгрыша,"
+                "в воскресенье с 13:00 до 17:00, по будням с 16:00 до 20:00\n"
+                "Солнечная Долина: Приз можно забрать с 17:00 до 18:00 в день розыгрыша и в любой другой день"
+                "с 12:00 до 18:00\n"
             )
         if "reject_" in query.data:
             win_number = query.data.split("_")[1]
@@ -178,3 +181,4 @@ async def callback(
                 chat_id=settings.MODERATOR_ID,
                 text=f"Пользователь с номером {win_number} отказался от получения приза.",
             )
+            await query.edit_message_text("Спасибо, Ваш ответ учтён.")
