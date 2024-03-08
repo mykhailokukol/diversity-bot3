@@ -67,8 +67,8 @@ async def choose_winner_resort(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ) -> int:
-    # if int(update.message.from_user.id) != int(settings.MODERATOR_ID):
-    #     return
+    if int(update.message.from_user.id) != int(settings.MODERATOR_ID):
+        return
 
     keyboard = [
         [
