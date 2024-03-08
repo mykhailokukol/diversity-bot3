@@ -63,13 +63,21 @@ def already_participant(client: MongoClient, update: Update, resort: str) -> boo
     return False
 
 
-def get_random_prize(client: MongoClient, update: Update) -> str:
+def get_random_prize(client: MongoClient, update: Update, resort: str) -> str:
     db = client["ski-bot"]
     prizes = db["prizes"]
-    prizes_list = list(prizes.find({"amount": {"$gt": 0}}, {"_id": 0, "name": 1}))
+    prizes_list = list(
+        prizes.find(
+            {"resort": resort, "amount": {"$gt": 0}},
+            {"_id": 0, "name": 1},
+        )
+    )
     if prizes_list:
         random_prize = random.choice(prizes_list)
-        prizes.update_one({"name": random_prize["name"]}, {"$inc": {"amount": -1}})
+        prizes.update_one(
+            {"name": random_prize["name"], "resort": resort},
+            {"$inc": {"amount": -1}},
+        )
         return random_prize["name"]
     else:
         return "К сожалению, призов не осталось"

@@ -67,8 +67,8 @@ async def choose_winner_resort(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ) -> int:
-    if int(update.message.from_user.id) != int(settings.MODERATOR_ID):
-        return
+    # if int(update.message.from_user.id) != int(settings.MODERATOR_ID):
+    #     return
 
     keyboard = [
         [
@@ -120,10 +120,12 @@ async def send_congratulations(
     keyboard = [
         [
             InlineKeyboardButton(
-                "Подтвердить", callback_data=f"approve_{winner['win_number']}"
+                "Подтвердить",
+                callback_data=f"approve_{winner['win_number']}_{winner['resort']}",
             ),
             InlineKeyboardButton(
-                "Отказаться", callback_data=f"reject_{winner['win_number']}"
+                "Отказаться",
+                callback_data=f"reject_{winner['win_number']}_{winner['resort']}",
             ),
         ]
     ]
@@ -161,24 +163,26 @@ async def callback(
     if answer:
         if "approve_" in query.data:
             win_number = query.data.split("_")[1]
+            resort = query.data.split("_")[2]
             client = MongoClient(settings.MONGODB_CLIENT_URL)
 
             await context.bot.send_message(
                 chat_id=settings.MODERATOR_ID,
-                text=f"Пользователь с номером {win_number} подтвердил получение приза.",
+                text=f"Пользователь с номером {win_number} [{resort}] подтвердил получение приза.",
             )
-            prize = get_random_prize(client, update)
+            prize = get_random_prize(client, update, resort)
             await query.edit_message_text(f"Поздравляем, Вы выиграли приз: {prize}")
             await update.effective_chat.send_message(
                 "Бобровый Лог: Приз можно забрать с 16:00 до 17:00 в день розыгрыша,"
-                "в воскресенье с 13:00 до 17:00, по будням с 16:00 до 20:00\n"
+                "в воскресенье с 13:00 до 17:00, по будням с 16:00 до 20:00 (до 30 марта включительно)\n"
                 "Солнечная Долина: Приз можно забрать с 17:00 до 18:00 в день розыгрыша и в любой другой день"
-                "с 12:00 до 18:00\n"
+                "с 12:00 до 18:00 (до 30 марта включительно)\n"
             )
         if "reject_" in query.data:
             win_number = query.data.split("_")[1]
+            resort = query.data.split("_")[2]
             await context.bot.send_message(
                 chat_id=settings.MODERATOR_ID,
-                text=f"Пользователь с номером {win_number} отказался от получения приза.",
+                text=f"Пользователь с номером {win_number} [{resort}] отказался от получения приза.",
             )
             await query.edit_message_text("Спасибо, Ваш ответ учтён.")
