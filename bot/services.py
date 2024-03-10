@@ -1,3 +1,4 @@
+from datetime import datetime
 import random
 
 from aiohttp import ClientSession
@@ -49,6 +50,7 @@ def add_user_to_db(
             "user_id": update.message.from_user.id,
             "win_number": win_number,
             "resort": resort,
+            "date": datetime.now().date(),
         }
     )
 
